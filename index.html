@@ -73,23 +73,52 @@
       -webkit-text-fill-color: var(--text-dim); flex-shrink: 0;
     }
     .help-btn:hover { border-color: var(--accent); color: var(--text); -webkit-text-fill-color: var(--text); }
-    .copy-toggle {
+    .mode-btn {
       padding: 2px 8px; background: var(--surface); color: var(--text-dim);
       border: 1px solid var(--border); border-radius: 4px; font-size: 0.68rem;
       -webkit-text-fill-color: var(--text-dim); flex-shrink: 0; transition: all 0.15s;
     }
-    .copy-toggle:hover { border-color: var(--accent); color: var(--text); -webkit-text-fill-color: var(--text); }
-    .copy-toggle.active { background: var(--accent); color: #fff; border-color: var(--accent); -webkit-text-fill-color: #fff; }
+    .mode-btn:hover { border-color: var(--accent); color: var(--text); -webkit-text-fill-color: var(--text); }
+    .mode-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); -webkit-text-fill-color: #fff; }
 
-    /* Copy toast */
-    .copy-toast {
+    /* Toast */
+    .toast {
       position: fixed; pointer-events: none; z-index: 200;
       background: var(--accent); color: #fff; -webkit-text-fill-color: #fff;
       font-size: 0.7rem; padding: 2px 8px; border-radius: 4px;
       opacity: 0; transition: opacity 0.15s, transform 0.15s;
       transform: translateY(4px);
     }
-    .copy-toast.show { opacity: 1; transform: translateY(0); }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    /* Sentence bar */
+    .sentence-bar {
+      display: none; flex-shrink: 0;
+      align-items: center; gap: 6px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+      padding: 4px 8px; max-width: 520px; width: 100%; margin: 0 auto;
+    }
+    .sentence-bar.visible { display: flex; }
+    .sentence-text {
+      flex: 1; min-width: 0; font-size: 1.1rem; color: var(--text);
+      -webkit-text-fill-color: var(--text); white-space: nowrap;
+      overflow-x: auto; scrollbar-width: none; letter-spacing: 1px;
+    }
+    .sentence-text::-webkit-scrollbar { display: none; }
+    .sentence-text .cursor {
+      display: inline-block; width: 2px; height: 1.1rem; background: var(--accent);
+      vertical-align: text-bottom; animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+    .sentence-placeholder { color: var(--text-dim); -webkit-text-fill-color: var(--text-dim); font-size: 0.75rem; }
+    .sent-btn {
+      padding: 3px 8px; background: rgba(255,255,255,0.06); color: var(--text-dim);
+      border: 1px solid var(--border); border-radius: 4px; font-size: 0.7rem;
+      -webkit-text-fill-color: var(--text-dim); flex-shrink: 0; transition: all 0.15s;
+    }
+    .sent-btn:hover { border-color: var(--accent); color: var(--text); -webkit-text-fill-color: var(--text); }
+    .sent-btn.play-btn { color: var(--romaji); -webkit-text-fill-color: var(--romaji); }
+    .sent-btn.play-btn:hover { color: #fff; -webkit-text-fill-color: #fff; background: var(--romaji); border-color: var(--romaji); }
 
     /* ===== HELP MODAL ===== */
     .modal-overlay {
@@ -194,10 +223,18 @@
     <button class="script-btn active" data-script="hiragana">ひらがな</button>
     <button class="script-btn" data-script="katakana">カタカナ</button>
   </div>
-  <button class="copy-toggle" id="copy-toggle">Copy</button>
+  <button class="mode-btn" id="copy-toggle" data-mode="copy">Copy</button>
+  <button class="mode-btn" id="sentence-toggle" data-mode="sentence">Sentence</button>
   <button class="help-btn" id="help-open">?</button>
 </div>
-<div class="copy-toast" id="copy-toast">Copied!</div>
+<div class="toast" id="toast">Copied!</div>
+
+<div class="sentence-bar" id="sentence-bar">
+  <div class="sentence-text" id="sentence-text"><span class="sentence-placeholder">Click kana to build a phrase...</span></div>
+  <button class="sent-btn play-btn" id="sent-play" title="Play sentence">&#9654;</button>
+  <button class="sent-btn" id="sent-back" title="Backspace">&#9003;</button>
+  <button class="sent-btn" id="sent-clear" title="Clear">&#10005;</button>
+</div>
 
 <div class="chart" id="chart"></div>
 
@@ -252,24 +289,44 @@ const HANDAKUON = [
 ];
 
 let currentScript = 'hiragana';
-let copyMode = false;
+let mode = 'play'; // 'play' | 'copy' | 'sentence'
+let sentence = '';
 const audioCache = {};
-const toast = document.getElementById('copy-toast');
+const toastEl = document.getElementById('toast');
+const sentBar = document.getElementById('sentence-bar');
+const sentText = document.getElementById('sentence-text');
 let toastTimer = null;
 
-function showToast(btn) {
+function showToast(text, btn) {
+  toastEl.textContent = text;
   const rect = btn.getBoundingClientRect();
-  toast.style.left = rect.left + rect.width / 2 - 24 + 'px';
-  toast.style.top = rect.top - 22 + 'px';
-  toast.classList.add('show');
+  toastEl.style.left = rect.left + rect.width / 2 - 24 + 'px';
+  toastEl.style.top = rect.top - 22 + 'px';
+  toastEl.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 700);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 700);
 }
 
-function copyChar(btn) {
-  const char = btn.querySelector('.char').textContent;
-  navigator.clipboard.writeText(char);
-  showToast(btn);
+function updateSentenceDisplay() {
+  if (sentence.length === 0) {
+    sentText.innerHTML = '<span class="sentence-placeholder">Click kana to build a phrase...</span>';
+  } else {
+    sentText.innerHTML = sentence + '<span class="cursor"></span>';
+    sentText.scrollLeft = sentText.scrollWidth;
+  }
+}
+
+function speakSentence() {
+  if (!sentence) return;
+  speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(sentence);
+  utter.lang = 'ja-JP';
+  utter.rate = 0.85;
+  // Try to find a Japanese voice
+  const voices = speechSynthesis.getVoices();
+  const jaVoice = voices.find(v => v.lang.startsWith('ja'));
+  if (jaVoice) utter.voice = jaVoice;
+  speechSynthesis.speak(utter);
 }
 
 function playAudio(romaji, btn) {
@@ -281,8 +338,19 @@ function playAudio(romaji, btn) {
 }
 
 function onKanaClick(romaji, btn) {
-  if (copyMode) copyChar(btn);
-  else playAudio(romaji, btn);
+  const char = btn.querySelector('.char').textContent;
+  if (mode === 'copy') {
+    navigator.clipboard.writeText(char);
+    showToast('Copied!', btn);
+  } else if (mode === 'sentence') {
+    sentence += char;
+    updateSentenceDisplay();
+    // Quick flash
+    btn.classList.add('playing');
+    setTimeout(() => btn.classList.remove('playing'), 200);
+  } else {
+    playAudio(romaji, btn);
+  }
 }
 
 function buildChart() {
@@ -369,12 +437,38 @@ searchInput.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { searchInput.value = ''; doSearch(); searchInput.blur(); }
 });
 
-// Copy mode toggle
-const copyToggleBtn = document.getElementById('copy-toggle');
-copyToggleBtn.addEventListener('click', () => {
-  copyMode = !copyMode;
-  copyToggleBtn.classList.toggle('active', copyMode);
+// Mode toggles (play / copy / sentence)
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const m = btn.dataset.mode;
+    if (mode === m) {
+      // Toggle off → back to play mode
+      mode = 'play';
+      btn.classList.remove('active');
+    } else {
+      // Switch to this mode
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      mode = m;
+      btn.classList.add('active');
+    }
+    sentBar.classList.toggle('visible', mode === 'sentence');
+  });
 });
+
+// Sentence controls
+document.getElementById('sent-play').addEventListener('click', speakSentence);
+document.getElementById('sent-back').addEventListener('click', () => {
+  sentence = sentence.slice(0, -1);
+  updateSentenceDisplay();
+});
+document.getElementById('sent-clear').addEventListener('click', () => {
+  sentence = '';
+  updateSentenceDisplay();
+});
+
+// Load voices (some browsers load async)
+speechSynthesis.getVoices();
+speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
 
 // Help modal
 const modal = document.getElementById('modal');
