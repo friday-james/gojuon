@@ -124,6 +124,28 @@
       margin-top: 2px; font-family: monospace;
     }
     .kana-btn.empty { opacity: 0; pointer-events: none; }
+    .kana-btn.highlight {
+      border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow);
+      background: rgba(233, 69, 96, 0.15);
+    }
+    .kana-btn.dimmed { opacity: 0.2; }
+
+    /* SEARCH */
+    .search-wrap {
+      position: relative; max-width: 200px;
+    }
+    .search-wrap input {
+      width: 100%; padding: 0.35rem 0.7rem 0.35rem 1.8rem;
+      background: var(--surface); color: var(--text); border: 1px solid var(--border);
+      border-radius: 6px; font-size: 0.8rem; font-family: inherit; outline: none;
+      -webkit-text-fill-color: var(--text);
+    }
+    .search-wrap input::placeholder { color: var(--text-dim); -webkit-text-fill-color: var(--text-dim); }
+    .search-wrap input:focus { border-color: var(--accent); }
+    .search-wrap .icon {
+      position: absolute; left: 0.55rem; top: 50%; transform: translateY(-50%);
+      color: var(--text-dim); font-size: 0.75rem; pointer-events: none;
+    }
 
     /* FOOTER */
     footer { text-align: center; margin-top: 1.5rem; color: var(--text-dim); font-size: 0.7rem; }
@@ -170,6 +192,10 @@
 </details>
 
 <div class="controls">
+  <div class="search-wrap">
+    <span class="icon">&#x1F50D;</span>
+    <input type="text" id="search" placeholder="Search (ka, あ, カ...)" autocomplete="off">
+  </div>
   <div class="script-toggle">
     <button class="script-btn active" data-script="hiragana">ひらがな</button>
     <button class="script-btn" data-script="katakana">カタカナ</button>
@@ -239,6 +265,9 @@ function createBtn(kana) {
   if (!kana) { const el = document.createElement('div'); el.className = 'kana-btn empty'; return el; }
   const btn = document.createElement('button');
   btn.className = 'kana-btn';
+  btn.dataset.romaji = kana.r;
+  btn.dataset.h = kana.h;
+  btn.dataset.k = kana.k;
   btn.innerHTML = `<span class="char">${currentScript === 'hiragana' ? kana.h : kana.k}</span><span class="romaji">${kana.r}</span>`;
   btn.addEventListener('click', () => playAudio(kana.r, btn));
   return btn;
@@ -269,7 +298,38 @@ document.querySelectorAll('.script-btn').forEach(btn => {
     btn.classList.add('active');
     currentScript = btn.dataset.script;
     renderAll();
+    doSearch();
   });
+});
+
+// SEARCH
+const searchInput = document.getElementById('search');
+function doSearch() {
+  const q = searchInput.value.trim().toLowerCase();
+  const allBtns = document.querySelectorAll('.kana-btn:not(.empty)');
+  if (!q) {
+    allBtns.forEach(b => { b.classList.remove('highlight', 'dimmed'); });
+    return;
+  }
+  let firstMatch = null;
+  allBtns.forEach(b => {
+    const r = b.dataset.romaji;
+    const h = b.dataset.h;
+    const k = b.dataset.k;
+    const match = r.startsWith(q) || h === q || k === q;
+    b.classList.toggle('highlight', match);
+    b.classList.toggle('dimmed', !match);
+    if (match && !firstMatch) firstMatch = b;
+  });
+  if (firstMatch) firstMatch.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+searchInput.addEventListener('input', doSearch);
+searchInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const match = document.querySelector('.kana-btn.highlight');
+    if (match) { playAudio(match.dataset.romaji, match); }
+  }
+  if (e.key === 'Escape') { searchInput.value = ''; doSearch(); searchInput.blur(); }
 });
 </script>
 </body>
