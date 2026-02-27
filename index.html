@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>五十音表 - Japanese Kana Chart with Audio</title>
+  <meta name="description" content="Interactive Japanese 五十音表 (Gojūon) chart with audio pronunciation for every hiragana and katakana character.">
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --surface: #16213e;
+      --card: #0f3460;
+      --accent: #e94560;
+      --accent-glow: rgba(233, 69, 96, 0.3);
+      --text: #eee;
+      --text-dim: #8892b0;
+      --romaji: #64ffda;
+      --katakana: #ffd166;
+      --border: rgba(255, 255, 255, 0.08);
+      --dakuten-accent: #7b68ee;
+      --handakuten-accent: #ffa07a;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', 'Noto Sans JP', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      background: linear-gradient(135deg, var(--accent), #ff6b6b, var(--katakana));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+    }
+
+    header p {
+      color: var(--text-dim);
+      font-size: 1.1rem;
+    }
+
+    .tabs {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      padding: 0.6rem 1.5rem;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-dim);
+      border-radius: 2rem;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.3s;
+    }
+
+    .tab-btn:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .tab-btn.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .section {
+      display: none;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .section.active { display: block; }
+
+    .section-title {
+      text-align: center;
+      font-size: 1.3rem;
+      color: var(--text-dim);
+      margin-bottom: 1.5rem;
+      letter-spacing: 0.1em;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.6rem;
+      margin-bottom: 2rem;
+    }
+
+    .row-label {
+      grid-column: 1 / -1;
+      text-align: left;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      padding: 0.5rem 0 0.2rem 0.3rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 0.3rem;
+    }
+
+    .kana-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0.8rem 0.4rem;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+      min-height: 80px;
+    }
+
+    .kana-btn:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+
+    .kana-btn:active {
+      transform: scale(0.95);
+    }
+
+    .kana-btn.playing {
+      border-color: var(--accent);
+      box-shadow: 0 0 25px var(--accent-glow);
+      animation: pulse 0.6s ease;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 5px var(--accent-glow); }
+      50% { box-shadow: 0 0 30px var(--accent-glow); }
+      100% { box-shadow: 0 0 5px var(--accent-glow); }
+    }
+
+    .kana-btn .hiragana {
+      font-size: 1.8rem;
+      font-weight: 500;
+      line-height: 1;
+    }
+
+    .kana-btn .katakana {
+      font-size: 0.9rem;
+      color: var(--katakana);
+      margin-top: 2px;
+    }
+
+    .kana-btn .romaji {
+      font-size: 0.75rem;
+      color: var(--romaji);
+      margin-top: 4px;
+      font-family: monospace;
+    }
+
+    .kana-btn.empty {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .kana-btn.dakuten { border-color: rgba(123, 104, 238, 0.2); }
+    .kana-btn.dakuten:hover {
+      border-color: var(--dakuten-accent);
+      box-shadow: 0 4px 20px rgba(123, 104, 238, 0.3);
+    }
+    .kana-btn.dakuten.playing {
+      border-color: var(--dakuten-accent);
+      box-shadow: 0 0 25px rgba(123, 104, 238, 0.3);
+    }
+
+    .kana-btn.handakuten { border-color: rgba(255, 160, 122, 0.2); }
+    .kana-btn.handakuten:hover {
+      border-color: var(--handakuten-accent);
+      box-shadow: 0 4px 20px rgba(255, 160, 122, 0.3);
+    }
+    .kana-btn.handakuten.playing {
+      border-color: var(--handakuten-accent);
+      box-shadow: 0 0 25px rgba(255, 160, 122, 0.3);
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 3rem;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+    }
+
+    footer a {
+      color: var(--romaji);
+      text-decoration: none;
+    }
+
+    /* Column headers */
+    .col-headers {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.6rem;
+      margin-bottom: 0.3rem;
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .col-header {
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+
+    @media (max-width: 480px) {
+      .kana-btn { padding: 0.6rem 0.2rem; min-height: 65px; }
+      .kana-btn .hiragana { font-size: 1.4rem; }
+      .kana-btn .katakana { font-size: 0.75rem; }
+      .kana-btn .romaji { font-size: 0.65rem; }
+      header h1 { font-size: 1.8rem; }
+      .grid { gap: 0.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>五十音表</h1>
+  <p>Gojūon — Click any character to hear its pronunciation</p>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="seion">清音 Seion</button>
+  <button class="tab-btn" data-tab="dakuon">濁音 Dakuon</button>
+  <button class="tab-btn" data-tab="handakuon">半濁音 Handakuon</button>
+</div>
+
+<!-- 清音 (Seion) - Basic Sounds -->
+<div class="section active" id="seion">
+  <div class="section-title">清音 — Clear Sounds</div>
+  <div class="col-headers">
+    <div class="col-header">a</div>
+    <div class="col-header">i</div>
+    <div class="col-header">u</div>
+    <div class="col-header">e</div>
+    <div class="col-header">o</div>
+  </div>
+  <div class="grid" id="seion-grid"></div>
+</div>
+
+<!-- 濁音 (Dakuon) -->
+<div class="section" id="dakuon">
+  <div class="section-title">濁音 — Voiced Sounds</div>
+  <div class="col-headers">
+    <div class="col-header">a</div>
+    <div class="col-header">i</div>
+    <div class="col-header">u</div>
+    <div class="col-header">e</div>
+    <div class="col-header">o</div>
+  </div>
+  <div class="grid" id="dakuon-grid"></div>
+</div>
+
+<!-- 半濁音 (Handakuon) -->
+<div class="section" id="handakuon">
+  <div class="section-title">半濁音 — Semi-Voiced Sounds</div>
+  <div class="col-headers">
+    <div class="col-header">a</div>
+    <div class="col-header">i</div>
+    <div class="col-header">u</div>
+    <div class="col-header">e</div>
+    <div class="col-header">o</div>
+  </div>
+  <div class="grid" id="handakuon-grid"></div>
+</div>
+
+<footer>
+  <p>Built for Japanese learners | Audio by OpenAI TTS</p>
+</footer>
+
+<script>
+const SEION = [
+  { label: "あ行 (vowels)", row: [
+    { h: "あ", k: "ア", r: "a" },
+    { h: "い", k: "イ", r: "i" },
+    { h: "う", k: "ウ", r: "u" },
+    { h: "え", k: "エ", r: "e" },
+    { h: "お", k: "オ", r: "o" },
+  ]},
+  { label: "か行 (k-)", row: [
+    { h: "か", k: "カ", r: "ka" },
+    { h: "き", k: "キ", r: "ki" },
+    { h: "く", k: "ク", r: "ku" },
+    { h: "け", k: "ケ", r: "ke" },
+    { h: "こ", k: "コ", r: "ko" },
+  ]},
+  { label: "さ行 (s-)", row: [
+    { h: "さ", k: "サ", r: "sa" },
+    { h: "し", k: "シ", r: "shi" },
+    { h: "す", k: "ス", r: "su" },
+    { h: "せ", k: "セ", r: "se" },
+    { h: "そ", k: "ソ", r: "so" },
+  ]},
+  { label: "た行 (t-)", row: [
+    { h: "た", k: "タ", r: "ta" },
+    { h: "ち", k: "チ", r: "chi" },
+    { h: "つ", k: "ツ", r: "tsu" },
+    { h: "て", k: "テ", r: "te" },
+    { h: "と", k: "ト", r: "to" },
+  ]},
+  { label: "な行 (n-)", row: [
+    { h: "な", k: "ナ", r: "na" },
+    { h: "に", k: "ニ", r: "ni" },
+    { h: "ぬ", k: "ヌ", r: "nu" },
+    { h: "ね", k: "ネ", r: "ne" },
+    { h: "の", k: "ノ", r: "no" },
+  ]},
+  { label: "は行 (h-)", row: [
+    { h: "は", k: "ハ", r: "ha" },
+    { h: "ひ", k: "ヒ", r: "hi" },
+    { h: "ふ", k: "フ", r: "fu" },
+    { h: "へ", k: "ヘ", r: "he" },
+    { h: "ほ", k: "ホ", r: "ho" },
+  ]},
+  { label: "ま行 (m-)", row: [
+    { h: "ま", k: "マ", r: "ma" },
+    { h: "み", k: "ミ", r: "mi" },
+    { h: "む", k: "ム", r: "mu" },
+    { h: "め", k: "メ", r: "me" },
+    { h: "も", k: "モ", r: "mo" },
+  ]},
+  { label: "や行 (y-)", row: [
+    { h: "や", k: "ヤ", r: "ya" },
+    null,
+    { h: "ゆ", k: "ユ", r: "yu" },
+    null,
+    { h: "よ", k: "ヨ", r: "yo" },
+  ]},
+  { label: "ら行 (r-)", row: [
+    { h: "ら", k: "ラ", r: "ra" },
+    { h: "り", k: "リ", r: "ri" },
+    { h: "る", k: "ル", r: "ru" },
+    { h: "れ", k: "レ", r: "re" },
+    { h: "ろ", k: "ロ", r: "ro" },
+  ]},
+  { label: "わ行 (w-) + ん", row: [
+    { h: "わ", k: "ワ", r: "wa" },
+    null,
+    { h: "ん", k: "ン", r: "n" },
+    null,
+    { h: "を", k: "ヲ", r: "wo" },
+  ]},
+];
+
+const DAKUON = [
+  { label: "が行 (g-)", row: [
+    { h: "が", k: "ガ", r: "ga" },
+    { h: "ぎ", k: "ギ", r: "gi" },
+    { h: "ぐ", k: "グ", r: "gu" },
+    { h: "げ", k: "ゲ", r: "ge" },
+    { h: "ご", k: "ゴ", r: "go" },
+  ]},
+  { label: "ざ行 (z-)", row: [
+    { h: "ざ", k: "ザ", r: "za" },
+    { h: "じ", k: "ジ", r: "ji" },
+    { h: "ず", k: "ズ", r: "zu" },
+    { h: "ぜ", k: "ゼ", r: "ze" },
+    { h: "ぞ", k: "ゾ", r: "zo" },
+  ]},
+  { label: "だ行 (d-)", row: [
+    { h: "だ", k: "ダ", r: "da" },
+    { h: "ぢ", k: "ヂ", r: "di" },
+    { h: "づ", k: "ヅ", r: "du" },
+    { h: "で", k: "デ", r: "de" },
+    { h: "ど", k: "ド", r: "do" },
+  ]},
+  { label: "ば行 (b-)", row: [
+    { h: "ば", k: "バ", r: "ba" },
+    { h: "び", k: "ビ", r: "bi" },
+    { h: "ぶ", k: "ブ", r: "bu" },
+    { h: "べ", k: "ベ", r: "be" },
+    { h: "ぼ", k: "ボ", r: "bo" },
+  ]},
+];
+
+const HANDAKUON = [
+  { label: "ぱ行 (p-)", row: [
+    { h: "ぱ", k: "パ", r: "pa" },
+    { h: "ぴ", k: "ピ", r: "pi" },
+    { h: "ぷ", k: "プ", r: "pu" },
+    { h: "ぺ", k: "ペ", r: "pe" },
+    { h: "ぽ", k: "ポ", r: "po" },
+  ]},
+];
+
+// Audio cache
+const audioCache = {};
+
+function playAudio(romaji, btn) {
+  const src = `audio/${romaji}.mp3`;
+
+  // Remove playing class from all buttons
+  document.querySelectorAll('.kana-btn.playing').forEach(b => b.classList.remove('playing'));
+
+  btn.classList.add('playing');
+
+  if (audioCache[romaji]) {
+    audioCache[romaji].currentTime = 0;
+    audioCache[romaji].play();
+  } else {
+    const audio = new Audio(src);
+    audioCache[romaji] = audio;
+    audio.play();
+  }
+
+  setTimeout(() => btn.classList.remove('playing'), 800);
+}
+
+function createButton(kana, extraClass = '') {
+  if (!kana) {
+    const btn = document.createElement('div');
+    btn.className = 'kana-btn empty';
+    return btn;
+  }
+
+  const btn = document.createElement('button');
+  btn.className = `kana-btn ${extraClass}`;
+  btn.innerHTML = `
+    <span class="hiragana">${kana.h}</span>
+    <span class="katakana">${kana.k}</span>
+    <span class="romaji">${kana.r}</span>
+  `;
+  btn.addEventListener('click', () => playAudio(kana.r, btn));
+  return btn;
+}
+
+function renderGrid(gridId, data, extraClass = '') {
+  const grid = document.getElementById(gridId);
+  data.forEach(group => {
+    const label = document.createElement('div');
+    label.className = 'row-label';
+    label.textContent = group.label;
+    grid.appendChild(label);
+
+    group.row.forEach(kana => {
+      grid.appendChild(createButton(kana, extraClass));
+    });
+  });
+}
+
+// Render all grids
+renderGrid('seion-grid', SEION);
+renderGrid('dakuon-grid', DAKUON, 'dakuten');
+renderGrid('handakuon-grid', HANDAKUON, 'handakuten');
+
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+// Keyboard support: press keys to hear sounds
+const keyMap = {
+  'a': 'a', 'i': 'i', 'u': 'u', 'e': 'e', 'o': 'o',
+};
+document.addEventListener('keydown', (e) => {
+  const romaji = keyMap[e.key.toLowerCase()];
+  if (romaji) {
+    const btn = document.querySelector(`[data-romaji="${romaji}"]`);
+    if (btn) playAudio(romaji, btn);
+  }
+});
+</script>
+
+</body>
+</html>
