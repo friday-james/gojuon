@@ -119,6 +119,33 @@
     .sent-btn:hover { border-color: var(--accent); color: var(--text); -webkit-text-fill-color: var(--text); }
     .sent-btn.play-btn { color: var(--romaji); -webkit-text-fill-color: var(--romaji); }
     .sent-btn.play-btn:hover { color: #fff; -webkit-text-fill-color: #fff; background: var(--romaji); border-color: var(--romaji); }
+    .sent-btn.save-btn { color: #ffd166; -webkit-text-fill-color: #ffd166; }
+    .sent-btn.save-btn:hover { color: #fff; -webkit-text-fill-color: #fff; background: #ffd166; border-color: #ffd166; }
+
+    /* Saved phrases modal */
+    .saved-list {
+      list-style: none; margin-top: 0.6rem; max-height: 55vh; overflow-y: auto;
+      scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    }
+    .saved-list::-webkit-scrollbar { width: 4px; }
+    .saved-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .saved-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 8px; border-bottom: 1px solid var(--border);
+    }
+    .saved-item:last-child { border-bottom: none; }
+    .saved-item .phrase {
+      flex: 1; font-size: 1.05rem; color: var(--text); -webkit-text-fill-color: var(--text);
+      letter-spacing: 1px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .saved-item .si-btn {
+      padding: 2px 6px; background: rgba(255,255,255,0.06); color: var(--text-dim);
+      border: 1px solid var(--border); border-radius: 3px; font-size: 0.65rem;
+      -webkit-text-fill-color: var(--text-dim); flex-shrink: 0; transition: all 0.12s;
+    }
+    .saved-item .si-btn:hover { border-color: var(--accent); color: var(--text); -webkit-text-fill-color: var(--text); }
+    .saved-item .si-btn.del:hover { background: var(--accent); color: #fff; -webkit-text-fill-color: #fff; }
+    .saved-empty { color: var(--text-dim); font-size: 0.8rem; text-align: center; padding: 1.5rem 0; }
 
     /* ===== HELP MODAL ===== */
     .modal-overlay {
@@ -225,6 +252,7 @@
   </div>
   <button class="mode-btn" id="copy-toggle" data-mode="copy">Copy</button>
   <button class="mode-btn" id="sentence-toggle" data-mode="sentence">Sentence</button>
+  <button class="help-btn" id="saved-open">&#9733;</button>
   <button class="help-btn" id="help-open">?</button>
 </div>
 <div class="toast" id="toast">Copied!</div>
@@ -232,6 +260,7 @@
 <div class="sentence-bar" id="sentence-bar">
   <div class="sentence-text" id="sentence-text"><span class="sentence-placeholder">Click kana to build a phrase...</span></div>
   <button class="sent-btn play-btn" id="sent-play" title="Play sentence">&#9654;</button>
+  <button class="sent-btn save-btn" id="sent-save" title="Save phrase">&#9733;</button>
   <button class="sent-btn" id="sent-back" title="Backspace">&#9003;</button>
   <button class="sent-btn" id="sent-clear" title="Clear">&#10005;</button>
 </div>
@@ -239,6 +268,15 @@
 <div class="chart" id="chart"></div>
 
 <div class="foot">Click any character to hear it &bull; Audio by OpenAI TTS</div>
+
+<!-- Saved phrases modal -->
+<div class="modal-overlay" id="saved-modal">
+  <div class="modal">
+    <button class="close-modal" id="saved-close">&times;</button>
+    <h2>Saved Phrases</h2>
+    <ul class="saved-list" id="saved-list"></ul>
+  </div>
+</div>
 
 <!-- Help modal -->
 <div class="modal-overlay" id="modal">
@@ -318,15 +356,7 @@ function updateSentenceDisplay() {
 
 function speakSentence() {
   if (!sentence) return;
-  speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(sentence);
-  utter.lang = 'ja-JP';
-  utter.rate = 0.85;
-  // Try to find a Japanese voice
-  const voices = speechSynthesis.getVoices();
-  const jaVoice = voices.find(v => v.lang.startsWith('ja'));
-  if (jaVoice) utter.voice = jaVoice;
-  speechSynthesis.speak(utter);
+  speakText(sentence);
 }
 
 function playAudio(romaji, btn) {
@@ -465,6 +495,83 @@ document.getElementById('sent-clear').addEventListener('click', () => {
   sentence = '';
   updateSentenceDisplay();
 });
+
+// Save phrase
+function getSavedPhrases() {
+  try { return JSON.parse(localStorage.getItem('gojuon-phrases') || '[]'); }
+  catch { return []; }
+}
+
+function savePhrases(list) {
+  localStorage.setItem('gojuon-phrases', JSON.stringify(list));
+}
+
+function speakText(text) {
+  speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'ja-JP';
+  utter.rate = 0.85;
+  const voices = speechSynthesis.getVoices();
+  const jaVoice = voices.find(v => v.lang.startsWith('ja'));
+  if (jaVoice) utter.voice = jaVoice;
+  speechSynthesis.speak(utter);
+}
+
+function renderSavedList() {
+  const list = document.getElementById('saved-list');
+  const phrases = getSavedPhrases();
+  if (phrases.length === 0) {
+    list.innerHTML = '<div class="saved-empty">No saved phrases yet.<br>Use Sentence mode to build and save phrases.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  phrases.forEach((phrase, i) => {
+    const li = document.createElement('li');
+    li.className = 'saved-item';
+    li.innerHTML = `
+      <span class="phrase">${phrase}</span>
+      <button class="si-btn" data-action="play" title="Play">&#9654;</button>
+      <button class="si-btn" data-action="copy" title="Copy">&#x2398;</button>
+      <button class="si-btn del" data-action="del" title="Delete">&#10005;</button>
+    `;
+    li.querySelector('[data-action="play"]').addEventListener('click', () => speakText(phrase));
+    li.querySelector('[data-action="copy"]').addEventListener('click', (e) => {
+      navigator.clipboard.writeText(phrase);
+      const btn = e.currentTarget;
+      btn.textContent = '✓';
+      setTimeout(() => btn.innerHTML = '&#x2398;', 700);
+    });
+    li.querySelector('[data-action="del"]').addEventListener('click', () => {
+      const p = getSavedPhrases();
+      p.splice(i, 1);
+      savePhrases(p);
+      renderSavedList();
+    });
+    list.appendChild(li);
+  });
+}
+
+document.getElementById('sent-save').addEventListener('click', () => {
+  if (!sentence) return;
+  const phrases = getSavedPhrases();
+  if (!phrases.includes(sentence)) {
+    phrases.push(sentence);
+    savePhrases(phrases);
+  }
+  // Flash the save button
+  const btn = document.getElementById('sent-save');
+  btn.textContent = '✓';
+  setTimeout(() => btn.innerHTML = '&#9733;', 700);
+});
+
+// Saved modal
+const savedModal = document.getElementById('saved-modal');
+document.getElementById('saved-open').addEventListener('click', () => {
+  renderSavedList();
+  savedModal.classList.add('open');
+});
+document.getElementById('saved-close').addEventListener('click', () => savedModal.classList.remove('open'));
+savedModal.addEventListener('click', (e) => { if (e.target === savedModal) savedModal.classList.remove('open'); });
 
 // Load voices (some browsers load async)
 speechSynthesis.getVoices();
