@@ -2,12 +2,11 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>五十音表 - Japanese Kana Chart with Audio</title>
-  <meta name="description" content="Interactive Japanese 五十音表 (Gojūon) chart with audio pronunciation for every hiragana and katakana character.">
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-    button {
+    button, input {
       appearance: none; -webkit-appearance: none; -moz-appearance: none;
       background: none; border: none; color: inherit; font: inherit;
       cursor: pointer; -webkit-text-fill-color: inherit;
@@ -19,235 +18,218 @@
       --accent: #e94560;
       --accent-glow: rgba(233, 69, 96, 0.35);
       --text: #f0f0f0;
-      --text-dim: #8892b0;
+      --text-dim: #6b7394;
       --romaji: #64ffda;
-      --border: rgba(255, 255, 255, 0.1);
+      --border: rgba(255, 255, 255, 0.08);
     }
 
+    html, body { height: 100dvh; overflow: hidden; }
     body {
       font-family: 'Segoe UI', 'Noto Sans JP', -apple-system, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 1rem 0.8rem 2rem;
+      background: var(--bg); color: var(--text);
+      display: flex; flex-direction: column;
+      padding: 6px 8px;
+      gap: 4px;
     }
 
-    /* HEADER */
-    header { text-align: center; margin-bottom: 0.8rem; }
-    header h1 {
-      font-size: 1.8rem;
+    /* ===== TOP BAR ===== */
+    .topbar {
+      display: flex; align-items: center; gap: 8px;
+      flex-shrink: 0; min-height: 0;
+    }
+    .topbar h1 {
+      font-size: 1.1rem; white-space: nowrap;
       background: linear-gradient(135deg, var(--accent), #ff6b6b, #ffd166);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
-    header .sub { color: var(--text-dim); font-size: 0.85rem; }
-
-    /* INTRO */
-    .intro {
-      max-width: 520px; margin: 0 auto 0.8rem;
-      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-      padding: 0.7rem 1rem; color: var(--text-dim); font-size: 0.82rem; line-height: 1.6;
-    }
-    .intro summary { color: var(--text); font-weight: 600; font-size: 0.85rem; cursor: pointer; list-style: none; }
-    .intro summary::before { content: "▸ "; color: var(--accent); }
-    .intro[open] summary::before { content: "▾ "; }
-    .intro .content { margin-top: 0.5rem; }
-    .intro strong { color: var(--text); }
-    .intro .ex { display: inline-block; background: rgba(255,255,255,0.05); border-radius: 4px; padding: 0 0.4rem; margin: 0.1rem; }
-    .intro .ex .jp { color: var(--text); font-size: 1rem; }
-    .intro .ex .rm { color: var(--romaji); font-size: 0.7rem; margin-left: 2px; }
-
-    /* CONTROLS */
-    .controls { display: flex; justify-content: center; align-items: center; gap: 0.6rem; margin-bottom: 0.8rem; flex-wrap: wrap; }
-    .script-toggle { display: flex; gap: 0; }
-    .script-btn {
-      padding: 0.35rem 0.8rem; background: var(--surface); color: var(--text-dim);
-      border: 1px solid var(--border); font-size: 0.8rem; transition: all 0.2s;
-      -webkit-text-fill-color: var(--text-dim);
-    }
-    .script-btn:first-child { border-radius: 6px 0 0 6px; }
-    .script-btn:last-child { border-radius: 0 6px 6px 0; }
-    .script-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); -webkit-text-fill-color: #fff; }
-
-    /* MAIN CONTAINER */
-    .chart { max-width: 520px; margin: 0 auto; }
-
-    .group-title {
-      color: var(--text-dim); font-size: 0.75rem; font-weight: 600;
-      margin: 0.8rem 0 0.3rem; padding-bottom: 0.2rem;
-      border-bottom: 1px solid var(--border); letter-spacing: 0.05em;
-    }
-    .group-title:first-child { margin-top: 0; }
-
-    /* COLUMN HEADERS */
-    .col-headers {
-      display: grid; grid-template-columns: 32px repeat(5, 1fr); gap: 3px; margin-bottom: 2px;
-    }
-    .col-header { text-align: center; color: var(--romaji); font-size: 0.7rem; font-weight: 600; font-family: monospace; }
-    .col-header:first-child { } /* spacer for row label column */
-
-    /* GRID */
-    .grid { display: grid; grid-template-columns: 32px repeat(5, 1fr); gap: 3px; margin-bottom: 2px; }
-
-    .row-lbl {
-      display: flex; align-items: center; justify-content: center;
-      color: var(--text-dim); font-size: 0.6rem; writing-mode: horizontal-tb;
-      opacity: 0.6;
-    }
-
-    /* KANA BUTTON */
-    .kana-btn {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      padding: 0.35rem 0.15rem; background: var(--surface); color: var(--text);
-      border: 1px solid var(--border); border-radius: 6px; min-height: 48px;
-      transition: all 0.15s ease; -webkit-text-fill-color: var(--text);
-    }
-    .kana-btn:hover {
-      transform: translateY(-1px); border-color: var(--accent);
-      box-shadow: 0 2px 10px var(--accent-glow);
-    }
-    .kana-btn:active { transform: scale(0.95); }
-    .kana-btn.playing {
-      border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow);
-      animation: pulse 0.4s ease;
-    }
-    @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 4px var(--accent-glow); }
-      50% { box-shadow: 0 0 18px var(--accent-glow); }
-    }
-
-    .kana-btn .char {
-      font-size: 1.4rem; line-height: 1;
-      color: var(--text); -webkit-text-fill-color: var(--text);
-    }
-    .kana-btn .romaji {
-      font-size: 0.6rem; color: var(--romaji); -webkit-text-fill-color: var(--romaji);
-      margin-top: 2px; font-family: monospace;
-    }
-    .kana-btn.empty { opacity: 0; pointer-events: none; }
-    .kana-btn.highlight {
-      border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow);
-      background: rgba(233, 69, 96, 0.15);
-    }
-    .kana-btn.dimmed { opacity: 0.2; }
-
-    /* SEARCH */
     .search-wrap {
-      position: relative; max-width: 200px;
+      position: relative; flex: 1; max-width: 180px;
     }
     .search-wrap input {
-      width: 100%; padding: 0.35rem 0.7rem 0.35rem 1.8rem;
+      width: 100%; padding: 3px 6px 3px 22px;
       background: var(--surface); color: var(--text); border: 1px solid var(--border);
-      border-radius: 6px; font-size: 0.8rem; font-family: inherit; outline: none;
+      border-radius: 4px; font-size: 0.72rem; outline: none;
       -webkit-text-fill-color: var(--text);
     }
     .search-wrap input::placeholder { color: var(--text-dim); -webkit-text-fill-color: var(--text-dim); }
     .search-wrap input:focus { border-color: var(--accent); }
     .search-wrap .icon {
-      position: absolute; left: 0.55rem; top: 50%; transform: translateY(-50%);
-      color: var(--text-dim); font-size: 0.75rem; pointer-events: none;
+      position: absolute; left: 6px; top: 50%; transform: translateY(-50%);
+      color: var(--text-dim); font-size: 0.65rem; pointer-events: none;
+    }
+    .spacer { flex: 1; }
+    .script-toggle { display: flex; flex-shrink: 0; }
+    .script-btn {
+      padding: 3px 10px; background: var(--surface); color: var(--text-dim);
+      border: 1px solid var(--border); font-size: 0.72rem; transition: all 0.15s;
+      -webkit-text-fill-color: var(--text-dim);
+    }
+    .script-btn:first-child { border-radius: 4px 0 0 4px; }
+    .script-btn:last-child { border-radius: 0 4px 4px 0; }
+    .script-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); -webkit-text-fill-color: #fff; }
+    .help-btn {
+      padding: 2px 8px; background: var(--surface); color: var(--text-dim);
+      border: 1px solid var(--border); border-radius: 4px; font-size: 0.68rem;
+      -webkit-text-fill-color: var(--text-dim); flex-shrink: 0;
+    }
+    .help-btn:hover { border-color: var(--accent); color: var(--text); -webkit-text-fill-color: var(--text); }
+
+    /* ===== HELP MODAL ===== */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      z-index: 100; align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1rem 1.2rem; max-width: 420px; width: 90%; color: var(--text-dim);
+      font-size: 0.82rem; line-height: 1.6; max-height: 80vh; overflow-y: auto;
+    }
+    .modal h2 { color: var(--text); font-size: 1rem; margin-bottom: 0.5rem; }
+    .modal strong { color: var(--text); }
+    .modal .close-modal {
+      float: right; color: var(--text-dim); font-size: 1.2rem; line-height: 1;
+      -webkit-text-fill-color: var(--text-dim);
+    }
+    .modal .ex { display: inline-block; background: rgba(255,255,255,0.05); border-radius: 4px; padding: 0 0.4rem; margin: 0.1rem; }
+    .modal .ex .jp { color: var(--text); font-size: 1rem; }
+    .modal .ex .rm { color: var(--romaji); font-size: 0.7rem; margin-left: 2px; }
+
+    /* ===== CHART ===== */
+    .chart {
+      flex: 1; min-height: 0;
+      display: grid;
+      grid-template-columns: 20px repeat(5, 1fr);
+      grid-template-rows: auto repeat(15, 1fr);
+      gap: 2px;
+      max-width: 520px; width: 100%;
+      margin: 0 auto;
     }
 
-    /* FOOTER */
-    footer { text-align: center; margin-top: 1.5rem; color: var(--text-dim); font-size: 0.7rem; }
-
-    /* MOBILE */
-    @media (max-width: 400px) {
-      body { padding: 0.6rem 0.4rem 1.5rem; }
-      header h1 { font-size: 1.5rem; }
-      .kana-btn { min-height: 40px; padding: 0.25rem 0.1rem; }
-      .kana-btn .char { font-size: 1.15rem; }
-      .kana-btn .romaji { font-size: 0.55rem; }
-      .grid, .col-headers { grid-template-columns: 24px repeat(5, 1fr); gap: 2px; }
-      .row-lbl { font-size: 0.5rem; }
+    /* Column headers row */
+    .col-hdr {
+      text-align: center; color: var(--romaji); font-size: 0.6rem;
+      font-weight: 600; font-family: monospace; line-height: 1;
+      padding-bottom: 1px;
     }
+    .col-hdr:first-child { }
+
+    /* Row label */
+    .row-lbl {
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-dim); font-size: 0.55rem; opacity: 0.5;
+    }
+
+    /* Separator row */
+    .sep {
+      grid-column: 1 / -1;
+      border-top: 1px solid var(--border);
+      margin: 1px 0;
+    }
+
+    /* Kana button */
+    .kana-btn {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius: 4px;
+      transition: all 0.12s ease; -webkit-text-fill-color: var(--text);
+      min-height: 0; overflow: hidden;
+    }
+    .kana-btn:hover {
+      border-color: var(--accent); box-shadow: 0 1px 8px var(--accent-glow);
+    }
+    .kana-btn:active { transform: scale(0.94); }
+    .kana-btn.playing {
+      border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow);
+      animation: pulse 0.35s ease;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 3px var(--accent-glow); }
+      50% { box-shadow: 0 0 14px var(--accent-glow); }
+    }
+
+    .kana-btn .char {
+      font-size: clamp(0.9rem, 2.8vh, 1.5rem); line-height: 1;
+      color: var(--text); -webkit-text-fill-color: var(--text);
+    }
+    .kana-btn .romaji {
+      font-size: clamp(0.4rem, 0.9vh, 0.6rem); color: var(--romaji);
+      -webkit-text-fill-color: var(--romaji); margin-top: 1px; font-family: monospace;
+    }
+    .kana-btn.empty { opacity: 0; pointer-events: none; }
+    .kana-btn.highlight { border-color: var(--accent); box-shadow: 0 0 10px var(--accent-glow); background: rgba(233,69,96,0.15); }
+    .kana-btn.dimmed { opacity: 0.15; }
+
+    /* ===== FOOTER ===== */
+    .foot { text-align: center; color: var(--text-dim); font-size: 0.55rem; flex-shrink: 0; opacity: 0.5; }
   </style>
 </head>
 <body>
 
-<header>
+<div class="topbar">
   <h1>五十音表</h1>
-  <p class="sub">Click any character to hear it</p>
-</header>
-
-<details class="intro">
-  <summary>What is this? (Beginner guide)</summary>
-  <div class="content">
-    <p>Japanese has two phonetic alphabets that represent the <strong>same sounds</strong>:</p>
-    <p style="margin-top:0.3rem">
-      <strong>Hiragana</strong> (curvy) — for native words &amp; grammar:
-      <span class="ex"><span class="jp">あ</span><span class="rm">a</span></span>
-      <span class="ex"><span class="jp">か</span><span class="rm">ka</span></span>
-      <span class="ex"><span class="jp">さ</span><span class="rm">sa</span></span>
-    </p>
-    <p style="margin-top:0.3rem">
-      <strong>Katakana</strong> (angular) — for foreign words (e.g. コーヒー = coffee):
-      <span class="ex"><span class="jp">ア</span><span class="rm">a</span></span>
-      <span class="ex"><span class="jp">カ</span><span class="rm">ka</span></span>
-      <span class="ex"><span class="jp">サ</span><span class="rm">sa</span></span>
-    </p>
-    <p style="margin-top:0.3rem">Each row = same consonant, each column = same vowel. <strong>Start with Hiragana!</strong></p>
-    <p style="margin-top:0.3rem"><strong>Voiced (濁音)</strong>: marks (゛) change the sound — k→g, s→z, t→d, h→b</p>
-    <p><strong>P-sounds (半濁音)</strong>: circle (゜) changes h→p</p>
-  </div>
-</details>
-
-<div class="controls">
   <div class="search-wrap">
     <span class="icon">&#x1F50D;</span>
     <input type="text" id="search" placeholder="Search (ka, あ, カ...)" autocomplete="off">
   </div>
+  <span class="spacer"></span>
   <div class="script-toggle">
     <button class="script-btn active" data-script="hiragana">ひらがな</button>
     <button class="script-btn" data-script="katakana">カタカナ</button>
   </div>
+  <button class="help-btn" id="help-open">?</button>
 </div>
 
-<div class="chart">
-  <!-- Column headers (shared) -->
-  <div class="col-headers">
-    <div class="col-header"></div>
-    <div class="col-header">a</div>
-    <div class="col-header">i</div>
-    <div class="col-header">u</div>
-    <div class="col-header">e</div>
-    <div class="col-header">o</div>
+<div class="chart" id="chart"></div>
+
+<div class="foot">Click any character to hear it &bull; Audio by OpenAI TTS</div>
+
+<!-- Help modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <button class="close-modal" id="modal-close">&times;</button>
+    <h2>What is this?</h2>
+    <p>Japanese has two phonetic alphabets for the <strong>same sounds</strong>:</p>
+    <p style="margin-top:0.4rem">
+      <strong>Hiragana</strong> (curvy) — native words &amp; grammar:
+      <span class="ex"><span class="jp">あ</span><span class="rm">a</span></span>
+      <span class="ex"><span class="jp">か</span><span class="rm">ka</span></span>
+      <span class="ex"><span class="jp">さ</span><span class="rm">sa</span></span>
+    </p>
+    <p style="margin-top:0.4rem">
+      <strong>Katakana</strong> (angular) — foreign words (e.g. コーヒー = coffee):
+      <span class="ex"><span class="jp">ア</span><span class="rm">a</span></span>
+      <span class="ex"><span class="jp">カ</span><span class="rm">ka</span></span>
+      <span class="ex"><span class="jp">サ</span><span class="rm">sa</span></span>
+    </p>
+    <p style="margin-top:0.4rem">Each <strong>row</strong> = same consonant, each <strong>column</strong> = same vowel. Start with Hiragana!</p>
+    <p style="margin-top:0.4rem"><strong>清音 Basic</strong> — the 46 core sounds (top section)</p>
+    <p><strong>濁音 Voiced</strong> — marks (゛) change: k→g, s→z, t→d, h→b</p>
+    <p><strong>半濁音 P-sounds</strong> — circle (゜) changes h→p</p>
   </div>
-
-  <div class="group-title">清音 Basic</div>
-  <div class="grid" id="seion-grid"></div>
-
-  <div class="group-title">濁音 Voiced</div>
-  <div class="grid" id="dakuon-grid"></div>
-
-  <div class="group-title">半濁音 P-sounds</div>
-  <div class="grid" id="handakuon-grid"></div>
 </div>
-
-<footer>Built for Japanese learners &bull; Audio by OpenAI TTS</footer>
 
 <script>
 const SEION = [
-  { l: "∅", row: [{ h:"あ",k:"ア",r:"a" },{ h:"い",k:"イ",r:"i" },{ h:"う",k:"ウ",r:"u" },{ h:"え",k:"エ",r:"e" },{ h:"お",k:"オ",r:"o" }]},
-  { l: "k", row: [{ h:"か",k:"カ",r:"ka" },{ h:"き",k:"キ",r:"ki" },{ h:"く",k:"ク",r:"ku" },{ h:"け",k:"ケ",r:"ke" },{ h:"こ",k:"コ",r:"ko" }]},
-  { l: "s", row: [{ h:"さ",k:"サ",r:"sa" },{ h:"し",k:"シ",r:"shi" },{ h:"す",k:"ス",r:"su" },{ h:"せ",k:"セ",r:"se" },{ h:"そ",k:"ソ",r:"so" }]},
-  { l: "t", row: [{ h:"た",k:"タ",r:"ta" },{ h:"ち",k:"チ",r:"chi" },{ h:"つ",k:"ツ",r:"tsu" },{ h:"て",k:"テ",r:"te" },{ h:"と",k:"ト",r:"to" }]},
-  { l: "n", row: [{ h:"な",k:"ナ",r:"na" },{ h:"に",k:"ニ",r:"ni" },{ h:"ぬ",k:"ヌ",r:"nu" },{ h:"ね",k:"ネ",r:"ne" },{ h:"の",k:"ノ",r:"no" }]},
-  { l: "h", row: [{ h:"は",k:"ハ",r:"ha" },{ h:"ひ",k:"ヒ",r:"hi" },{ h:"ふ",k:"フ",r:"fu" },{ h:"へ",k:"ヘ",r:"he" },{ h:"ほ",k:"ホ",r:"ho" }]},
-  { l: "m", row: [{ h:"ま",k:"マ",r:"ma" },{ h:"み",k:"ミ",r:"mi" },{ h:"む",k:"ム",r:"mu" },{ h:"め",k:"メ",r:"me" },{ h:"も",k:"モ",r:"mo" }]},
-  { l: "y", row: [{ h:"や",k:"ヤ",r:"ya" },null,{ h:"ゆ",k:"ユ",r:"yu" },null,{ h:"よ",k:"ヨ",r:"yo" }]},
-  { l: "r", row: [{ h:"ら",k:"ラ",r:"ra" },{ h:"り",k:"リ",r:"ri" },{ h:"る",k:"ル",r:"ru" },{ h:"れ",k:"レ",r:"re" },{ h:"ろ",k:"ロ",r:"ro" }]},
-  { l: "w", row: [{ h:"わ",k:"ワ",r:"wa" },null,{ h:"ん",k:"ン",r:"n" },null,{ h:"を",k:"ヲ",r:"wo" }]},
+  { l:"∅", row:[{h:"あ",k:"ア",r:"a"},{h:"い",k:"イ",r:"i"},{h:"う",k:"ウ",r:"u"},{h:"え",k:"エ",r:"e"},{h:"お",k:"オ",r:"o"}]},
+  { l:"k", row:[{h:"か",k:"カ",r:"ka"},{h:"き",k:"キ",r:"ki"},{h:"く",k:"ク",r:"ku"},{h:"け",k:"ケ",r:"ke"},{h:"こ",k:"コ",r:"ko"}]},
+  { l:"s", row:[{h:"さ",k:"サ",r:"sa"},{h:"し",k:"シ",r:"shi"},{h:"す",k:"ス",r:"su"},{h:"せ",k:"セ",r:"se"},{h:"そ",k:"ソ",r:"so"}]},
+  { l:"t", row:[{h:"た",k:"タ",r:"ta"},{h:"ち",k:"チ",r:"chi"},{h:"つ",k:"ツ",r:"tsu"},{h:"て",k:"テ",r:"te"},{h:"と",k:"ト",r:"to"}]},
+  { l:"n", row:[{h:"な",k:"ナ",r:"na"},{h:"に",k:"ニ",r:"ni"},{h:"ぬ",k:"ヌ",r:"nu"},{h:"ね",k:"ネ",r:"ne"},{h:"の",k:"ノ",r:"no"}]},
+  { l:"h", row:[{h:"は",k:"ハ",r:"ha"},{h:"ひ",k:"ヒ",r:"hi"},{h:"ふ",k:"フ",r:"fu"},{h:"へ",k:"ヘ",r:"he"},{h:"ほ",k:"ホ",r:"ho"}]},
+  { l:"m", row:[{h:"ま",k:"マ",r:"ma"},{h:"み",k:"ミ",r:"mi"},{h:"む",k:"ム",r:"mu"},{h:"め",k:"メ",r:"me"},{h:"も",k:"モ",r:"mo"}]},
+  { l:"y", row:[{h:"や",k:"ヤ",r:"ya"},null,{h:"ゆ",k:"ユ",r:"yu"},null,{h:"よ",k:"ヨ",r:"yo"}]},
+  { l:"r", row:[{h:"ら",k:"ラ",r:"ra"},{h:"り",k:"リ",r:"ri"},{h:"る",k:"ル",r:"ru"},{h:"れ",k:"レ",r:"re"},{h:"ろ",k:"ロ",r:"ro"}]},
+  { l:"w", row:[{h:"わ",k:"ワ",r:"wa"},null,{h:"ん",k:"ン",r:"n"},null,{h:"を",k:"ヲ",r:"wo"}]},
 ];
-
 const DAKUON = [
-  { l: "g", row: [{ h:"が",k:"ガ",r:"ga" },{ h:"ぎ",k:"ギ",r:"gi" },{ h:"ぐ",k:"グ",r:"gu" },{ h:"げ",k:"ゲ",r:"ge" },{ h:"ご",k:"ゴ",r:"go" }]},
-  { l: "z", row: [{ h:"ざ",k:"ザ",r:"za" },{ h:"じ",k:"ジ",r:"ji" },{ h:"ず",k:"ズ",r:"zu" },{ h:"ぜ",k:"ゼ",r:"ze" },{ h:"ぞ",k:"ゾ",r:"zo" }]},
-  { l: "d", row: [{ h:"だ",k:"ダ",r:"da" },{ h:"ぢ",k:"ヂ",r:"di" },{ h:"づ",k:"ヅ",r:"du" },{ h:"で",k:"デ",r:"de" },{ h:"ど",k:"ド",r:"do" }]},
-  { l: "b", row: [{ h:"ば",k:"バ",r:"ba" },{ h:"び",k:"ビ",r:"bi" },{ h:"ぶ",k:"ブ",r:"bu" },{ h:"べ",k:"ベ",r:"be" },{ h:"ぼ",k:"ボ",r:"bo" }]},
+  { l:"g", row:[{h:"が",k:"ガ",r:"ga"},{h:"ぎ",k:"ギ",r:"gi"},{h:"ぐ",k:"グ",r:"gu"},{h:"げ",k:"ゲ",r:"ge"},{h:"ご",k:"ゴ",r:"go"}]},
+  { l:"z", row:[{h:"ざ",k:"ザ",r:"za"},{h:"じ",k:"ジ",r:"ji"},{h:"ず",k:"ズ",r:"zu"},{h:"ぜ",k:"ゼ",r:"ze"},{h:"ぞ",k:"ゾ",r:"zo"}]},
+  { l:"d", row:[{h:"だ",k:"ダ",r:"da"},{h:"ぢ",k:"ヂ",r:"di"},{h:"づ",k:"ヅ",r:"du"},{h:"で",k:"デ",r:"de"},{h:"ど",k:"ド",r:"do"}]},
+  { l:"b", row:[{h:"ば",k:"バ",r:"ba"},{h:"び",k:"ビ",r:"bi"},{h:"ぶ",k:"ブ",r:"bu"},{h:"べ",k:"ベ",r:"be"},{h:"ぼ",k:"ボ",r:"bo"}]},
 ];
-
 const HANDAKUON = [
-  { l: "p", row: [{ h:"ぱ",k:"パ",r:"pa" },{ h:"ぴ",k:"ピ",r:"pi" },{ h:"ぷ",k:"プ",r:"pu" },{ h:"ぺ",k:"ペ",r:"pe" },{ h:"ぽ",k:"ポ",r:"po" }]},
+  { l:"p", row:[{h:"ぱ",k:"パ",r:"pa"},{h:"ぴ",k:"ピ",r:"pi"},{h:"ぷ",k:"プ",r:"pu"},{h:"ぺ",k:"ペ",r:"pe"},{h:"ぽ",k:"ポ",r:"po"}]},
 ];
 
 let currentScript = 'hiragana';
@@ -261,76 +243,95 @@ function playAudio(romaji, btn) {
   setTimeout(() => btn.classList.remove('playing'), 600);
 }
 
-function createBtn(kana) {
-  if (!kana) { const el = document.createElement('div'); el.className = 'kana-btn empty'; return el; }
-  const btn = document.createElement('button');
-  btn.className = 'kana-btn';
-  btn.dataset.romaji = kana.r;
-  btn.dataset.h = kana.h;
-  btn.dataset.k = kana.k;
-  btn.innerHTML = `<span class="char">${currentScript === 'hiragana' ? kana.h : kana.k}</span><span class="romaji">${kana.r}</span>`;
-  btn.addEventListener('click', () => playAudio(kana.r, btn));
-  return btn;
-}
+function buildChart() {
+  const chart = document.getElementById('chart');
+  chart.innerHTML = '';
 
-function renderGrid(gridId, data) {
-  const grid = document.getElementById(gridId);
-  grid.innerHTML = '';
-  data.forEach(group => {
-    const lbl = document.createElement('div');
-    lbl.className = 'row-lbl';
-    lbl.textContent = group.l;
-    grid.appendChild(lbl);
-    group.row.forEach(k => grid.appendChild(createBtn(k)));
+  // Column headers
+  const hdrs = ['', 'a', 'i', 'u', 'e', 'o'];
+  hdrs.forEach(h => {
+    const d = document.createElement('div');
+    d.className = 'col-hdr';
+    d.textContent = h;
+    chart.appendChild(d);
   });
+
+  let totalRows = 0;
+  const groups = [SEION, DAKUON, HANDAKUON];
+  groups.forEach((group, gi) => {
+    // Separator between groups (not before first)
+    if (gi > 0) {
+      const sep = document.createElement('div');
+      sep.className = 'sep';
+      chart.appendChild(sep);
+    }
+    group.forEach(row => {
+      // Row label
+      const lbl = document.createElement('div');
+      lbl.className = 'row-lbl';
+      lbl.textContent = row.l;
+      chart.appendChild(lbl);
+      // 5 kana
+      row.row.forEach(kana => {
+        if (!kana) {
+          const el = document.createElement('div');
+          el.className = 'kana-btn empty';
+          chart.appendChild(el);
+          return;
+        }
+        const btn = document.createElement('button');
+        btn.className = 'kana-btn';
+        btn.dataset.romaji = kana.r;
+        btn.dataset.h = kana.h;
+        btn.dataset.k = kana.k;
+        btn.innerHTML = `<span class="char">${currentScript === 'hiragana' ? kana.h : kana.k}</span><span class="romaji">${kana.r}</span>`;
+        btn.addEventListener('click', () => playAudio(kana.r, btn));
+        chart.appendChild(btn);
+      });
+      totalRows++;
+    });
+  });
+
+  // Update grid rows: header + 15 kana rows (separators are 0-height)
+  chart.style.gridTemplateRows = `auto repeat(${totalRows}, 1fr)`;
 }
 
-function renderAll() {
-  renderGrid('seion-grid', SEION);
-  renderGrid('dakuon-grid', DAKUON);
-  renderGrid('handakuon-grid', HANDAKUON);
-}
-renderAll();
+buildChart();
 
+// Script toggle
 document.querySelectorAll('.script-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.script-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     currentScript = btn.dataset.script;
-    renderAll();
+    buildChart();
     doSearch();
   });
 });
 
-// SEARCH
+// Search
 const searchInput = document.getElementById('search');
 function doSearch() {
   const q = searchInput.value.trim().toLowerCase();
   const allBtns = document.querySelectorAll('.kana-btn:not(.empty)');
-  if (!q) {
-    allBtns.forEach(b => { b.classList.remove('highlight', 'dimmed'); });
-    return;
-  }
-  let firstMatch = null;
+  if (!q) { allBtns.forEach(b => b.classList.remove('highlight', 'dimmed')); return; }
   allBtns.forEach(b => {
-    const r = b.dataset.romaji;
-    const h = b.dataset.h;
-    const k = b.dataset.k;
-    const match = r.startsWith(q) || h === q || k === q;
+    const match = b.dataset.romaji.startsWith(q) || b.dataset.h === q || b.dataset.k === q;
     b.classList.toggle('highlight', match);
     b.classList.toggle('dimmed', !match);
-    if (match && !firstMatch) firstMatch = b;
   });
-  if (firstMatch) firstMatch.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 searchInput.addEventListener('input', doSearch);
 searchInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    const match = document.querySelector('.kana-btn.highlight');
-    if (match) { playAudio(match.dataset.romaji, match); }
-  }
+  if (e.key === 'Enter') { const m = document.querySelector('.kana-btn.highlight'); if (m) playAudio(m.dataset.romaji, m); }
   if (e.key === 'Escape') { searchInput.value = ''; doSearch(); searchInput.blur(); }
 });
+
+// Help modal
+const modal = document.getElementById('modal');
+document.getElementById('help-open').addEventListener('click', () => modal.classList.add('open'));
+document.getElementById('modal-close').addEventListener('click', () => modal.classList.remove('open'));
+modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); });
 </script>
 </body>
 </html>
