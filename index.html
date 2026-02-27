@@ -73,6 +73,23 @@
       -webkit-text-fill-color: var(--text-dim); flex-shrink: 0;
     }
     .help-btn:hover { border-color: var(--accent); color: var(--text); -webkit-text-fill-color: var(--text); }
+    .copy-toggle {
+      padding: 2px 8px; background: var(--surface); color: var(--text-dim);
+      border: 1px solid var(--border); border-radius: 4px; font-size: 0.68rem;
+      -webkit-text-fill-color: var(--text-dim); flex-shrink: 0; transition: all 0.15s;
+    }
+    .copy-toggle:hover { border-color: var(--accent); color: var(--text); -webkit-text-fill-color: var(--text); }
+    .copy-toggle.active { background: var(--accent); color: #fff; border-color: var(--accent); -webkit-text-fill-color: #fff; }
+
+    /* Copy toast */
+    .copy-toast {
+      position: fixed; pointer-events: none; z-index: 200;
+      background: var(--accent); color: #fff; -webkit-text-fill-color: #fff;
+      font-size: 0.7rem; padding: 2px 8px; border-radius: 4px;
+      opacity: 0; transition: opacity 0.15s, transform 0.15s;
+      transform: translateY(4px);
+    }
+    .copy-toast.show { opacity: 1; transform: translateY(0); }
 
     /* ===== HELP MODAL ===== */
     .modal-overlay {
@@ -177,8 +194,10 @@
     <button class="script-btn active" data-script="hiragana">ひらがな</button>
     <button class="script-btn" data-script="katakana">カタカナ</button>
   </div>
+  <button class="copy-toggle" id="copy-toggle">Copy</button>
   <button class="help-btn" id="help-open">?</button>
 </div>
+<div class="copy-toast" id="copy-toast">Copied!</div>
 
 <div class="chart" id="chart"></div>
 
@@ -233,7 +252,25 @@ const HANDAKUON = [
 ];
 
 let currentScript = 'hiragana';
+let copyMode = false;
 const audioCache = {};
+const toast = document.getElementById('copy-toast');
+let toastTimer = null;
+
+function showToast(btn) {
+  const rect = btn.getBoundingClientRect();
+  toast.style.left = rect.left + rect.width / 2 - 24 + 'px';
+  toast.style.top = rect.top - 22 + 'px';
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 700);
+}
+
+function copyChar(btn) {
+  const char = btn.querySelector('.char').textContent;
+  navigator.clipboard.writeText(char);
+  showToast(btn);
+}
 
 function playAudio(romaji, btn) {
   document.querySelectorAll('.kana-btn.playing').forEach(b => b.classList.remove('playing'));
@@ -241,6 +278,11 @@ function playAudio(romaji, btn) {
   if (audioCache[romaji]) { audioCache[romaji].currentTime = 0; audioCache[romaji].play(); }
   else { const a = new Audio(`audio/${romaji}.mp3`); audioCache[romaji] = a; a.play(); }
   setTimeout(() => btn.classList.remove('playing'), 600);
+}
+
+function onKanaClick(romaji, btn) {
+  if (copyMode) copyChar(btn);
+  else playAudio(romaji, btn);
 }
 
 function buildChart() {
@@ -285,7 +327,7 @@ function buildChart() {
         btn.dataset.h = kana.h;
         btn.dataset.k = kana.k;
         btn.innerHTML = `<span class="char">${currentScript === 'hiragana' ? kana.h : kana.k}</span><span class="romaji">${kana.r}</span>`;
-        btn.addEventListener('click', () => playAudio(kana.r, btn));
+        btn.addEventListener('click', () => onKanaClick(kana.r, btn));
         chart.appendChild(btn);
       });
       totalRows++;
@@ -325,6 +367,13 @@ searchInput.addEventListener('input', doSearch);
 searchInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') { const m = document.querySelector('.kana-btn.highlight'); if (m) playAudio(m.dataset.romaji, m); }
   if (e.key === 'Escape') { searchInput.value = ''; doSearch(); searchInput.blur(); }
+});
+
+// Copy mode toggle
+const copyToggleBtn = document.getElementById('copy-toggle');
+copyToggleBtn.addEventListener('click', () => {
+  copyMode = !copyMode;
+  copyToggleBtn.classList.toggle('active', copyMode);
 });
 
 // Help modal
