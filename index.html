@@ -6,135 +6,254 @@
   <title>五十音表 - Japanese Kana Chart with Audio</title>
   <meta name="description" content="Interactive Japanese 五十音表 (Gojūon) chart with audio pronunciation for every hiragana and katakana character.">
   <style>
+    /* ===== HARD RESET FOR ALL ELEMENTS ===== */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    button {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background: none;
+      border: none;
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+      -webkit-text-fill-color: inherit;
+    }
+
     :root {
-      --bg: #1a1a2e;
-      --surface: #16213e;
-      --card: #0f3460;
+      --bg: #0f0f1a;
+      --surface: #1a1a2e;
       --accent: #e94560;
-      --accent-glow: rgba(233, 69, 96, 0.3);
-      --text: #eee;
+      --accent-glow: rgba(233, 69, 96, 0.35);
+      --text: #f0f0f0;
       --text-dim: #8892b0;
       --romaji: #64ffda;
-      --katakana: #ffd166;
-      --border: rgba(255, 255, 255, 0.08);
+      --border: rgba(255, 255, 255, 0.1);
       --dakuten-accent: #7b68ee;
       --handakuten-accent: #ffa07a;
     }
-
-    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       font-family: 'Segoe UI', 'Noto Sans JP', -apple-system, sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
-      padding: 2rem 1rem;
+      padding: 1.5rem 1rem 3rem;
     }
 
+    /* ===== HEADER ===== */
     header {
       text-align: center;
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
     }
 
     header h1 {
       font-size: 2.5rem;
-      background: linear-gradient(135deg, var(--accent), #ff6b6b, var(--katakana));
+      background: linear-gradient(135deg, var(--accent), #ff6b6b, #ffd166);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.3rem;
     }
 
-    header p {
+    header .subtitle {
       color: var(--text-dim);
+      font-size: 1.05rem;
+    }
+
+    /* ===== INTRO / EXPLANATION ===== */
+    .intro {
+      max-width: 680px;
+      margin: 0 auto 2rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem 1.5rem;
+      line-height: 1.7;
+      color: var(--text-dim);
+      font-size: 0.95rem;
+    }
+
+    .intro summary {
+      color: var(--text);
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .intro summary::before {
+      content: "▸ ";
+      color: var(--accent);
+    }
+
+    .intro[open] summary::before {
+      content: "▾ ";
+    }
+
+    .intro .content {
+      margin-top: 0.8rem;
+    }
+
+    .intro strong { color: var(--text); }
+
+    .intro .example {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 6px;
+      padding: 0.1rem 0.5rem;
+      margin: 0.15rem 0.2rem;
       font-size: 1.1rem;
     }
 
+    .intro .example .jp { color: var(--text); font-size: 1.2rem; }
+    .intro .example .rm { color: var(--romaji); font-size: 0.8rem; margin-left: 0.3rem; }
+
+    /* ===== WRITING SYSTEM TOGGLE (Hiragana / Katakana) ===== */
+    .script-toggle {
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      margin-bottom: 1rem;
+      max-width: 340px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .script-btn {
+      flex: 1;
+      padding: 0.6rem 1rem;
+      background: var(--surface);
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+      font-size: 0.95rem;
+      transition: all 0.25s;
+    }
+
+    .script-btn:first-child { border-radius: 8px 0 0 8px; }
+    .script-btn:last-child { border-radius: 0 8px 8px 0; }
+
+    .script-btn.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      -webkit-text-fill-color: #fff;
+    }
+
+    .script-btn:hover:not(.active) {
+      color: var(--text);
+      border-color: var(--accent);
+      -webkit-text-fill-color: var(--text);
+    }
+
+    /* ===== SOUND TYPE TABS ===== */
     .tabs {
       display: flex;
       justify-content: center;
       gap: 0.5rem;
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
       flex-wrap: wrap;
     }
 
     .tab-btn {
-      padding: 0.6rem 1.5rem;
-      border: 1px solid var(--border);
+      padding: 0.5rem 1.2rem;
       background: var(--surface);
       color: var(--text-dim);
+      border: 1px solid var(--border);
       border-radius: 2rem;
-      cursor: pointer;
-      font-size: 1rem;
-      font-family: inherit;
-      transition: all 0.3s;
+      font-size: 0.9rem;
+      transition: all 0.25s;
+      -webkit-text-fill-color: var(--text-dim);
     }
 
     .tab-btn:hover {
       border-color: var(--accent);
       color: var(--text);
+      -webkit-text-fill-color: var(--text);
     }
 
     .tab-btn.active {
       background: var(--accent);
-      color: white;
+      color: #fff;
       border-color: var(--accent);
+      -webkit-text-fill-color: #fff;
     }
 
+    /* ===== SECTIONS ===== */
     .section {
       display: none;
-      max-width: 700px;
+      max-width: 600px;
       margin: 0 auto;
     }
 
     .section.active { display: block; }
 
-    .section-title {
+    .section-desc {
       text-align: center;
-      font-size: 1.3rem;
       color: var(--text-dim);
-      margin-bottom: 1.5rem;
-      letter-spacing: 0.1em;
+      font-size: 0.9rem;
+      margin-bottom: 1.2rem;
+      line-height: 1.5;
+    }
+
+    /* ===== GRID ===== */
+    .col-headers {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.5rem;
+      max-width: 600px;
+      margin: 0 auto 0.4rem;
+    }
+
+    .col-header {
+      text-align: center;
+      color: var(--romaji);
+      font-size: 0.8rem;
+      font-weight: 600;
+      font-family: monospace;
     }
 
     .grid {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
-      gap: 0.6rem;
-      margin-bottom: 2rem;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
     }
 
     .row-label {
       grid-column: 1 / -1;
-      text-align: left;
       color: var(--text-dim);
-      font-size: 0.85rem;
-      padding: 0.5rem 0 0.2rem 0.3rem;
+      font-size: 0.8rem;
+      padding: 0.6rem 0 0.2rem 0.2rem;
       border-bottom: 1px solid var(--border);
-      margin-bottom: 0.3rem;
+      margin-bottom: 0.2rem;
     }
 
+    /* ===== KANA BUTTON ===== */
     .kana-btn {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 0.8rem 0.4rem;
-      border: 1px solid var(--border);
+      padding: 0.7rem 0.3rem;
       background: var(--surface);
       color: var(--text);
-      border-radius: 12px;
-      cursor: pointer;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      min-height: 72px;
       transition: all 0.2s ease;
-      position: relative;
-      min-height: 80px;
-      font-family: inherit;
+      -webkit-text-fill-color: var(--text);
     }
 
     .kana-btn:hover {
       transform: translateY(-2px);
       border-color: var(--accent);
-      box-shadow: 0 4px 20px var(--accent-glow);
+      box-shadow: 0 4px 16px var(--accent-glow);
     }
 
     .kana-btn:active {
@@ -143,31 +262,26 @@
 
     .kana-btn.playing {
       border-color: var(--accent);
-      box-shadow: 0 0 25px var(--accent-glow);
-      animation: pulse 0.6s ease;
+      box-shadow: 0 0 20px var(--accent-glow);
+      animation: pulse 0.5s ease;
     }
 
     @keyframes pulse {
-      0% { box-shadow: 0 0 5px var(--accent-glow); }
-      50% { box-shadow: 0 0 30px var(--accent-glow); }
-      100% { box-shadow: 0 0 5px var(--accent-glow); }
+      0%, 100% { box-shadow: 0 0 5px var(--accent-glow); }
+      50% { box-shadow: 0 0 25px var(--accent-glow); }
     }
 
-    .kana-btn .hiragana {
-      font-size: 1.8rem;
-      font-weight: 500;
+    .kana-btn .char {
+      font-size: 1.9rem;
       line-height: 1;
-    }
-
-    .kana-btn .katakana {
-      font-size: 0.9rem;
-      color: var(--katakana);
-      margin-top: 2px;
+      color: var(--text);
+      -webkit-text-fill-color: var(--text);
     }
 
     .kana-btn .romaji {
       font-size: 0.75rem;
       color: var(--romaji);
+      -webkit-text-fill-color: var(--romaji);
       margin-top: 4px;
       font-family: monospace;
     }
@@ -177,64 +291,35 @@
       pointer-events: none;
     }
 
-    .kana-btn.dakuten { border-color: rgba(123, 104, 238, 0.2); }
+    .kana-btn.dakuten { border-color: rgba(123, 104, 238, 0.15); }
     .kana-btn.dakuten:hover {
       border-color: var(--dakuten-accent);
-      box-shadow: 0 4px 20px rgba(123, 104, 238, 0.3);
-    }
-    .kana-btn.dakuten.playing {
-      border-color: var(--dakuten-accent);
-      box-shadow: 0 0 25px rgba(123, 104, 238, 0.3);
+      box-shadow: 0 4px 16px rgba(123, 104, 238, 0.3);
     }
 
-    .kana-btn.handakuten { border-color: rgba(255, 160, 122, 0.2); }
+    .kana-btn.handakuten { border-color: rgba(255, 160, 122, 0.15); }
     .kana-btn.handakuten:hover {
       border-color: var(--handakuten-accent);
-      box-shadow: 0 4px 20px rgba(255, 160, 122, 0.3);
-    }
-    .kana-btn.handakuten.playing {
-      border-color: var(--handakuten-accent);
-      box-shadow: 0 0 25px rgba(255, 160, 122, 0.3);
+      box-shadow: 0 4px 16px rgba(255, 160, 122, 0.3);
     }
 
+    /* ===== FOOTER ===== */
     footer {
       text-align: center;
-      margin-top: 3rem;
-      color: var(--text-dim);
-      font-size: 0.85rem;
-    }
-
-    footer a {
-      color: var(--romaji);
-      text-decoration: none;
-    }
-
-    /* Column headers */
-    .col-headers {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 0.6rem;
-      margin-bottom: 0.3rem;
-      max-width: 700px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    .col-header {
-      text-align: center;
+      margin-top: 2.5rem;
       color: var(--text-dim);
       font-size: 0.8rem;
-      font-weight: 600;
-      letter-spacing: 0.05em;
     }
 
+    /* ===== MOBILE ===== */
     @media (max-width: 480px) {
-      .kana-btn { padding: 0.6rem 0.2rem; min-height: 65px; }
-      .kana-btn .hiragana { font-size: 1.4rem; }
-      .kana-btn .katakana { font-size: 0.75rem; }
+      body { padding: 1rem 0.5rem 2rem; }
+      header h1 { font-size: 2rem; }
+      .intro { padding: 1rem; font-size: 0.9rem; }
+      .kana-btn { min-height: 60px; padding: 0.5rem 0.2rem; }
+      .kana-btn .char { font-size: 1.5rem; }
       .kana-btn .romaji { font-size: 0.65rem; }
-      header h1 { font-size: 1.8rem; }
-      .grid { gap: 0.4rem; }
+      .grid { gap: 0.35rem; }
     }
   </style>
 </head>
@@ -242,18 +327,57 @@
 
 <header>
   <h1>五十音表</h1>
-  <p>Gojūon — Click any character to hear its pronunciation</p>
+  <p class="subtitle">Gojūon &mdash; Click any character to hear its pronunciation</p>
 </header>
 
-<div class="tabs">
-  <button class="tab-btn active" data-tab="seion">清音 Seion</button>
-  <button class="tab-btn" data-tab="dakuon">濁音 Dakuon</button>
-  <button class="tab-btn" data-tab="handakuon">半濁音 Handakuon</button>
+<!-- Beginner explanation -->
+<details class="intro" open>
+  <summary>What is this?</summary>
+  <div class="content">
+    <p>
+      Japanese uses two phonetic alphabets called <strong>Hiragana</strong> and <strong>Katakana</strong>.
+      They represent the exact same sounds, but are used in different situations:
+    </p>
+    <p style="margin-top: 0.5rem;">
+      <strong>Hiragana</strong> (ひらがな) &mdash; the curvy one. Used for native Japanese words and grammar.
+      <br>
+      <span class="example"><span class="jp">あ</span> <span class="rm">a</span></span>
+      <span class="example"><span class="jp">か</span> <span class="rm">ka</span></span>
+      <span class="example"><span class="jp">さ</span> <span class="rm">sa</span></span>
+    </p>
+    <p style="margin-top: 0.5rem;">
+      <strong>Katakana</strong> (カタカナ) &mdash; the angular one. Used for foreign/borrowed words (e.g. コーヒー = coffee).
+      <br>
+      <span class="example"><span class="jp">ア</span> <span class="rm">a</span></span>
+      <span class="example"><span class="jp">カ</span> <span class="rm">ka</span></span>
+      <span class="example"><span class="jp">サ</span> <span class="rm">sa</span></span>
+    </p>
+    <p style="margin-top: 0.6rem;">
+      The table below (五十音表 = "50-sound chart") organizes all the sounds.
+      Each row shares a consonant, each column shares a vowel.
+      <strong>Start with Hiragana</strong> &mdash; it's what beginners learn first!
+    </p>
+  </div>
+</details>
+
+<!-- Hiragana / Katakana toggle -->
+<div class="script-toggle">
+  <button class="script-btn active" data-script="hiragana">ひらがな Hiragana</button>
+  <button class="script-btn" data-script="katakana">カタカナ Katakana</button>
 </div>
 
-<!-- 清音 (Seion) - Basic Sounds -->
+<!-- Sound type tabs -->
+<div class="tabs">
+  <button class="tab-btn active" data-tab="seion">清音 Basic</button>
+  <button class="tab-btn" data-tab="dakuon">濁音 Voiced</button>
+  <button class="tab-btn" data-tab="handakuon">半濁音 P-sounds</button>
+</div>
+
+<!-- 清音 (Seion) -->
 <div class="section active" id="seion">
-  <div class="section-title">清音 — Clear Sounds</div>
+  <p class="section-desc">
+    <strong>清音 (Seion)</strong> &mdash; The 46 basic sounds. Each row adds a consonant (k, s, t...) to the 5 vowels (a, i, u, e, o).
+  </p>
   <div class="col-headers">
     <div class="col-header">a</div>
     <div class="col-header">i</div>
@@ -266,7 +390,9 @@
 
 <!-- 濁音 (Dakuon) -->
 <div class="section" id="dakuon">
-  <div class="section-title">濁音 — Voiced Sounds</div>
+  <p class="section-desc">
+    <strong>濁音 (Dakuon)</strong> &mdash; "Voiced" versions of basic sounds. The two small marks (゛) change the consonant: k→g, s→z, t→d, h→b.
+  </p>
   <div class="col-headers">
     <div class="col-header">a</div>
     <div class="col-header">i</div>
@@ -279,7 +405,9 @@
 
 <!-- 半濁音 (Handakuon) -->
 <div class="section" id="handakuon">
-  <div class="section-title">半濁音 — Semi-Voiced Sounds</div>
+  <p class="section-desc">
+    <strong>半濁音 (Handakuon)</strong> &mdash; The small circle (゜) changes h→p. Only applies to the は-row.
+  </p>
   <div class="col-headers">
     <div class="col-header">a</div>
     <div class="col-header">i</div>
@@ -291,75 +419,76 @@
 </div>
 
 <footer>
-  <p>Built for Japanese learners | Audio by OpenAI TTS</p>
+  <p>Built for Japanese learners &bull; Audio by OpenAI TTS</p>
 </footer>
 
 <script>
+// ===== DATA =====
 const SEION = [
-  { label: "あ行 (vowels)", row: [
+  { label: "あ行 — vowels", row: [
     { h: "あ", k: "ア", r: "a" },
     { h: "い", k: "イ", r: "i" },
     { h: "う", k: "ウ", r: "u" },
     { h: "え", k: "エ", r: "e" },
     { h: "お", k: "オ", r: "o" },
   ]},
-  { label: "か行 (k-)", row: [
+  { label: "か行 — k + vowel", row: [
     { h: "か", k: "カ", r: "ka" },
     { h: "き", k: "キ", r: "ki" },
     { h: "く", k: "ク", r: "ku" },
     { h: "け", k: "ケ", r: "ke" },
     { h: "こ", k: "コ", r: "ko" },
   ]},
-  { label: "さ行 (s-)", row: [
+  { label: "さ行 — s + vowel", row: [
     { h: "さ", k: "サ", r: "sa" },
     { h: "し", k: "シ", r: "shi" },
     { h: "す", k: "ス", r: "su" },
     { h: "せ", k: "セ", r: "se" },
     { h: "そ", k: "ソ", r: "so" },
   ]},
-  { label: "た行 (t-)", row: [
+  { label: "た行 — t + vowel", row: [
     { h: "た", k: "タ", r: "ta" },
     { h: "ち", k: "チ", r: "chi" },
     { h: "つ", k: "ツ", r: "tsu" },
     { h: "て", k: "テ", r: "te" },
     { h: "と", k: "ト", r: "to" },
   ]},
-  { label: "な行 (n-)", row: [
+  { label: "な行 — n + vowel", row: [
     { h: "な", k: "ナ", r: "na" },
     { h: "に", k: "ニ", r: "ni" },
     { h: "ぬ", k: "ヌ", r: "nu" },
     { h: "ね", k: "ネ", r: "ne" },
     { h: "の", k: "ノ", r: "no" },
   ]},
-  { label: "は行 (h-)", row: [
+  { label: "は行 — h + vowel", row: [
     { h: "は", k: "ハ", r: "ha" },
     { h: "ひ", k: "ヒ", r: "hi" },
     { h: "ふ", k: "フ", r: "fu" },
     { h: "へ", k: "ヘ", r: "he" },
     { h: "ほ", k: "ホ", r: "ho" },
   ]},
-  { label: "ま行 (m-)", row: [
+  { label: "ま行 — m + vowel", row: [
     { h: "ま", k: "マ", r: "ma" },
     { h: "み", k: "ミ", r: "mi" },
     { h: "む", k: "ム", r: "mu" },
     { h: "め", k: "メ", r: "me" },
     { h: "も", k: "モ", r: "mo" },
   ]},
-  { label: "や行 (y-)", row: [
+  { label: "や行 — y + vowel", row: [
     { h: "や", k: "ヤ", r: "ya" },
     null,
     { h: "ゆ", k: "ユ", r: "yu" },
     null,
     { h: "よ", k: "ヨ", r: "yo" },
   ]},
-  { label: "ら行 (r-)", row: [
+  { label: "ら行 — r + vowel", row: [
     { h: "ら", k: "ラ", r: "ra" },
     { h: "り", k: "リ", r: "ri" },
     { h: "る", k: "ル", r: "ru" },
     { h: "れ", k: "レ", r: "re" },
     { h: "ろ", k: "ロ", r: "ro" },
   ]},
-  { label: "わ行 (w-) + ん", row: [
+  { label: "わ行 + ん", row: [
     { h: "わ", k: "ワ", r: "wa" },
     null,
     { h: "ん", k: "ン", r: "n" },
@@ -369,28 +498,28 @@ const SEION = [
 ];
 
 const DAKUON = [
-  { label: "が行 (g-)", row: [
+  { label: "が行 — g + vowel (from か)", row: [
     { h: "が", k: "ガ", r: "ga" },
     { h: "ぎ", k: "ギ", r: "gi" },
     { h: "ぐ", k: "グ", r: "gu" },
     { h: "げ", k: "ゲ", r: "ge" },
     { h: "ご", k: "ゴ", r: "go" },
   ]},
-  { label: "ざ行 (z-)", row: [
+  { label: "ざ行 — z + vowel (from さ)", row: [
     { h: "ざ", k: "ザ", r: "za" },
     { h: "じ", k: "ジ", r: "ji" },
     { h: "ず", k: "ズ", r: "zu" },
     { h: "ぜ", k: "ゼ", r: "ze" },
     { h: "ぞ", k: "ゾ", r: "zo" },
   ]},
-  { label: "だ行 (d-)", row: [
+  { label: "だ行 — d + vowel (from た)", row: [
     { h: "だ", k: "ダ", r: "da" },
     { h: "ぢ", k: "ヂ", r: "di" },
     { h: "づ", k: "ヅ", r: "du" },
     { h: "で", k: "デ", r: "de" },
     { h: "ど", k: "ド", r: "do" },
   ]},
-  { label: "ば行 (b-)", row: [
+  { label: "ば行 — b + vowel (from は)", row: [
     { h: "ば", k: "バ", r: "ba" },
     { h: "び", k: "ビ", r: "bi" },
     { h: "ぶ", k: "ブ", r: "bu" },
@@ -400,7 +529,7 @@ const DAKUON = [
 ];
 
 const HANDAKUON = [
-  { label: "ぱ行 (p-)", row: [
+  { label: "ぱ行 — p + vowel (from は)", row: [
     { h: "ぱ", k: "パ", r: "pa" },
     { h: "ぴ", k: "ピ", r: "pi" },
     { h: "ぷ", k: "プ", r: "pu" },
@@ -409,22 +538,20 @@ const HANDAKUON = [
   ]},
 ];
 
-// Audio cache
+// ===== STATE =====
+let currentScript = 'hiragana'; // 'hiragana' or 'katakana'
 const audioCache = {};
 
+// ===== AUDIO =====
 function playAudio(romaji, btn) {
-  const src = `audio/${romaji}.mp3`;
-
-  // Remove playing class from all buttons
   document.querySelectorAll('.kana-btn.playing').forEach(b => b.classList.remove('playing'));
-
   btn.classList.add('playing');
 
   if (audioCache[romaji]) {
     audioCache[romaji].currentTime = 0;
     audioCache[romaji].play();
   } else {
-    const audio = new Audio(src);
+    const audio = new Audio(`audio/${romaji}.mp3`);
     audioCache[romaji] = audio;
     audio.play();
   }
@@ -432,18 +559,19 @@ function playAudio(romaji, btn) {
   setTimeout(() => btn.classList.remove('playing'), 800);
 }
 
-function createButton(kana, extraClass = '') {
+// ===== RENDERING =====
+function createButton(kana, extraClass) {
   if (!kana) {
-    const btn = document.createElement('div');
-    btn.className = 'kana-btn empty';
-    return btn;
+    const el = document.createElement('div');
+    el.className = 'kana-btn empty';
+    return el;
   }
 
   const btn = document.createElement('button');
   btn.className = `kana-btn ${extraClass}`;
+  const char = currentScript === 'hiragana' ? kana.h : kana.k;
   btn.innerHTML = `
-    <span class="hiragana">${kana.h}</span>
-    <span class="katakana">${kana.k}</span>
+    <span class="char">${char}</span>
     <span class="romaji">${kana.r}</span>
   `;
   btn.addEventListener('click', () => playAudio(kana.r, btn));
@@ -452,24 +580,35 @@ function createButton(kana, extraClass = '') {
 
 function renderGrid(gridId, data, extraClass = '') {
   const grid = document.getElementById(gridId);
+  grid.innerHTML = '';
   data.forEach(group => {
     const label = document.createElement('div');
     label.className = 'row-label';
     label.textContent = group.label;
     grid.appendChild(label);
-
-    group.row.forEach(kana => {
-      grid.appendChild(createButton(kana, extraClass));
-    });
+    group.row.forEach(kana => grid.appendChild(createButton(kana, extraClass)));
   });
 }
 
-// Render all grids
-renderGrid('seion-grid', SEION);
-renderGrid('dakuon-grid', DAKUON, 'dakuten');
-renderGrid('handakuon-grid', HANDAKUON, 'handakuten');
+function renderAll() {
+  renderGrid('seion-grid', SEION);
+  renderGrid('dakuon-grid', DAKUON, 'dakuten');
+  renderGrid('handakuon-grid', HANDAKUON, 'handakuten');
+}
 
-// Tab switching
+renderAll();
+
+// ===== SCRIPT TOGGLE (Hiragana / Katakana) =====
+document.querySelectorAll('.script-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.script-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentScript = btn.dataset.script;
+    renderAll();
+  });
+});
+
+// ===== TAB SWITCHING =====
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -477,18 +616,6 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
   });
-});
-
-// Keyboard support: press keys to hear sounds
-const keyMap = {
-  'a': 'a', 'i': 'i', 'u': 'u', 'e': 'e', 'o': 'o',
-};
-document.addEventListener('keydown', (e) => {
-  const romaji = keyMap[e.key.toLowerCase()];
-  if (romaji) {
-    const btn = document.querySelector(`[data-romaji="${romaji}"]`);
-    if (btn) playAudio(romaji, btn);
-  }
 });
 </script>
 
