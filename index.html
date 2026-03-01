@@ -153,6 +153,12 @@
     .si .phrase {
       font-size: 0.82rem; color: var(--text); -webkit-text-fill-color: var(--text);
       letter-spacing: 0.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      line-height: 1.1;
+    }
+    .si .phrase ruby { display: inline-flex; flex-direction: column-reverse; align-items: center; text-align: center; }
+    .si .phrase rt {
+      font-size: 0.48rem; color: var(--romaji); -webkit-text-fill-color: var(--romaji);
+      line-height: 1; letter-spacing: 0; ruby-align: center;
     }
     .si .remark {
       font-size: 0.58rem; color: var(--text-dim); -webkit-text-fill-color: var(--text-dim);
@@ -458,6 +464,21 @@ function buildChart() {
 }
 buildChart();
 
+// ===== KANA→ROMAJI LOOKUP =====
+const kanaToRomaji = {};
+[...SEION, ...DAKUON, ...HANDAKUON].forEach(g => g.row.forEach(c => {
+  if (!c) return;
+  kanaToRomaji[c.h] = c.r;
+  kanaToRomaji[c.k] = c.r;
+}));
+
+function rubyAnnotate(text) {
+  return [...text].map(ch => {
+    const r = kanaToRomaji[ch];
+    return r ? '<ruby>' + ch + '<rt>' + r + '</rt></ruby>' : ch;
+  }).join('');
+}
+
 // ===== SIDEBAR SAVED LIST =====
 function renderSavedList() {
   const list = document.getElementById('saved-list');
@@ -467,7 +488,7 @@ function renderSavedList() {
   phrases.forEach((entry, i) => {
     const li = document.createElement('li'); li.className = 'si';
     const textDiv = document.createElement('div'); textDiv.className = 'si-text';
-    const phraseSpan = document.createElement('div'); phraseSpan.className = 'phrase'; phraseSpan.textContent = entry.text;
+    const phraseSpan = document.createElement('div'); phraseSpan.className = 'phrase'; phraseSpan.innerHTML = rubyAnnotate(entry.text);
     const remarkDiv = document.createElement('div'); remarkDiv.className = 'remark'; remarkDiv.textContent = entry.remark || '';
     // Click remark to edit inline
     remarkDiv.addEventListener('click', () => {
