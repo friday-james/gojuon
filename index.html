@@ -89,6 +89,14 @@
     .sb.play { color: var(--romaji); -webkit-text-fill-color: var(--romaji); }
     .sb.play:hover { color: #fff; -webkit-text-fill-color: #fff; background: var(--romaji); border-color: var(--romaji); }
     .sb.save { color: var(--gold); -webkit-text-fill-color: var(--gold); }
+    .remark-input {
+      flex: 1; min-width: 0; max-width: 140px; padding: 2px 6px;
+      background: var(--bg); color: var(--text-dim); border: 1px solid var(--border);
+      border-radius: 3px; font-size: 0.62rem; outline: none;
+      -webkit-text-fill-color: var(--text-dim);
+    }
+    .remark-input::placeholder { color: rgba(107,115,148,0.5); -webkit-text-fill-color: rgba(107,115,148,0.5); }
+    .remark-input:focus { border-color: var(--gold); color: var(--text); -webkit-text-fill-color: var(--text); }
 
     /* MAIN AREA: chart + sidebar */
     .main { flex: 1; min-height: 0; display: flex; gap: 6px; }
@@ -136,15 +144,29 @@
     .saved-list::-webkit-scrollbar { width: 3px; }
     .saved-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
     .si {
-      display: flex; align-items: center; gap: 4px;
+      display: flex; align-items: flex-start; gap: 4px;
       padding: 4px 6px; border-bottom: 1px solid var(--border); transition: background 0.1s;
     }
     .si:last-child { border-bottom: none; }
     .si:hover { background: rgba(255,255,255,0.03); }
+    .si-text { flex: 1; min-width: 0; overflow: hidden; }
     .si .phrase {
-      flex: 1; font-size: 0.82rem; color: var(--text); -webkit-text-fill-color: var(--text);
-      letter-spacing: 0.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      font-size: 0.82rem; color: var(--text); -webkit-text-fill-color: var(--text);
+      letter-spacing: 0.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
+    .si .remark {
+      font-size: 0.58rem; color: var(--text-dim); -webkit-text-fill-color: var(--text-dim);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px;
+      cursor: text;
+    }
+    .si .remark:empty::before { content: "add note..."; opacity: 0.4; }
+    .si .remark-edit {
+      width: 100%; padding: 1px 4px; margin-top: 1px;
+      background: var(--bg); color: var(--text); border: 1px solid var(--gold);
+      border-radius: 2px; font-size: 0.58rem; outline: none;
+      -webkit-text-fill-color: var(--text); font-family: inherit;
+    }
+    .si .btns { display: flex; gap: 2px; flex-shrink: 0; padding-top: 2px; }
     .si .ib {
       padding: 1px 4px; background: rgba(255,255,255,0.04); color: var(--text-dim);
       border: 1px solid var(--border); border-radius: 2px; font-size: 0.55rem;
@@ -214,6 +236,7 @@
 
 <div class="sentence-bar" id="sentence-bar">
   <div class="sentence-text" id="sentence-text"><span class="sentence-placeholder">Click kana to build a phrase...</span></div>
+  <input type="text" class="remark-input" id="remark-input" placeholder="Note (e.g. hello)" autocomplete="off">
   <button class="sb play" id="sent-play" title="Play">&#9654;</button>
   <button class="sb save" id="sent-save" title="Save">&#9733;</button>
   <button class="sb" id="sent-back" title="Backspace">&#9003;</button>
@@ -302,7 +325,14 @@ const sentText = document.getElementById('sentence-text');
 let toastTimer = null;
 
 // ===== LOCALSTORAGE HELPERS =====
-function getSavedPhrases() { try { return JSON.parse(localStorage.getItem('gojuon-phrases')||'[]'); } catch { return []; } }
+// Phrases stored as [{text:"...", remark:"..."}, ...]
+function getSavedPhrases() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('gojuon-phrases')||'[]');
+    // Migrate old format (plain strings) to new format
+    return raw.map(p => typeof p === 'string' ? {text: p, remark: ''} : p);
+  } catch { return []; }
+}
 function savePhrases(l) { localStorage.setItem('gojuon-phrases', JSON.stringify(l)); }
 function getApiKey() { return localStorage.getItem('gojuon-openai-key') || ''; }
 function setApiKey(k) { if (k) localStorage.setItem('gojuon-openai-key', k); else localStorage.removeItem('gojuon-openai-key'); updateKeyBtn(); }
@@ -434,20 +464,36 @@ function renderSavedList() {
   const phrases = getSavedPhrases();
   if (!phrases.length) { list.innerHTML = '<div class="saved-empty">No saved phrases yet.<br>Use Sentence mode to build &amp; save.</div>'; return; }
   list.innerHTML = '';
-  phrases.forEach((phrase, i) => {
+  phrases.forEach((entry, i) => {
     const li = document.createElement('li'); li.className = 'si';
-    li.innerHTML = '<span class="phrase">'+phrase+'</span>'
-      +'<button class="ib play-ib" data-a="play" title="Play">&#9654;</button>'
+    const textDiv = document.createElement('div'); textDiv.className = 'si-text';
+    const phraseSpan = document.createElement('div'); phraseSpan.className = 'phrase'; phraseSpan.textContent = entry.text;
+    const remarkDiv = document.createElement('div'); remarkDiv.className = 'remark'; remarkDiv.textContent = entry.remark || '';
+    // Click remark to edit inline
+    remarkDiv.addEventListener('click', () => {
+      const input = document.createElement('input'); input.className = 'remark-edit';
+      input.value = entry.remark || ''; input.placeholder = 'add note...';
+      remarkDiv.replaceWith(input); input.focus();
+      const save = () => {
+        const p = getSavedPhrases(); p[i].remark = input.value.trim(); savePhrases(p); renderSavedList();
+      };
+      input.addEventListener('blur', save);
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') { input.value = entry.remark || ''; input.blur(); } });
+    });
+    textDiv.appendChild(phraseSpan); textDiv.appendChild(remarkDiv);
+    const btns = document.createElement('div'); btns.className = 'btns';
+    btns.innerHTML = '<button class="ib play-ib" data-a="play" title="Play">&#9654;</button>'
       +'<button class="ib" data-a="copy" title="Copy">&#x2398;</button>'
       +'<button class="ib del" data-a="del" title="Delete">&#10005;</button>';
-    li.querySelector('[data-a="play"]').addEventListener('click', () => speakText(phrase));
-    li.querySelector('[data-a="copy"]').addEventListener('click', e => {
-      navigator.clipboard.writeText(phrase);
+    btns.querySelector('[data-a="play"]').addEventListener('click', () => speakText(entry.text));
+    btns.querySelector('[data-a="copy"]').addEventListener('click', e => {
+      navigator.clipboard.writeText(entry.text);
       e.currentTarget.textContent = '✓'; setTimeout(() => e.currentTarget.innerHTML = '&#x2398;', 700);
     });
-    li.querySelector('[data-a="del"]').addEventListener('click', () => {
+    btns.querySelector('[data-a="del"]').addEventListener('click', () => {
       const p = getSavedPhrases(); p.splice(i,1); savePhrases(p); renderSavedList();
     });
+    li.appendChild(textDiv); li.appendChild(btns);
     list.appendChild(li);
   });
 }
@@ -495,7 +541,12 @@ document.getElementById('sent-clear').addEventListener('click', () => { sentence
 document.getElementById('sent-save').addEventListener('click', () => {
   if (!sentence) return;
   const p = getSavedPhrases();
-  if (!p.includes(sentence)) { p.push(sentence); savePhrases(p); renderSavedList(); }
+  if (!p.some(x => x.text === sentence)) {
+    const remark = document.getElementById('remark-input').value.trim();
+    p.push({text: sentence, remark});
+    savePhrases(p); renderSavedList();
+    document.getElementById('remark-input').value = '';
+  }
   const b = document.getElementById('sent-save'); b.textContent='✓'; setTimeout(()=>b.innerHTML='&#9733;',700);
 });
 
